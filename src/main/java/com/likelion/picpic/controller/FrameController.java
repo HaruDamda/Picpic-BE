@@ -1,11 +1,13 @@
 package com.likelion.picpic.controller;
 
 import com.likelion.picpic.service.S3Service;
+import com.likelion.picpic.utils.JwtUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,6 +24,9 @@ import java.util.List;
 @Api(tags = "Frame",description = "Frame 관련 로직 작성")
 public class FrameController {
     private final S3Service s3Service;
+
+    @Value("${jwt.secret}")
+    private String secretKey;
 
     @PostMapping("/save/frame")
     @ApiOperation(value = "프레임 저장 api", notes = "헤더로 토큰, 바디로 이미지 주면돼")
@@ -43,21 +48,11 @@ public class FrameController {
             @ApiResponse(code = 401, message = "실패")
     })
     @GetMapping("/get/frame")
-    public ResponseEntity<List<String>> findFrame(Authentication authentication){
-        if (authentication == null) {
-            // 여기서는 예시로 401 Unauthorized 응답을 보내고 있습니다.
-            // 상황에 따라 적절한 상태 코드와 메시지를 설정할 수 있습니다.
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ArrayList<>());
-        }
-        //authentication 정보 뜯어보기
-        List<String> auth=new ArrayList<>();
-        auth.add(authentication.getName());
-        return ResponseEntity.ok().body(auth);
-        //디버깅 전용 코드
-        /*
-        List<String> urlsList=s3Service.findImageUrlsByUserId(authentication.getName(), "frame");
+    public ResponseEntity<List<String>> findFrame(@RequestHeader("Authorization") String token){
+        String rToken = token.substring(7);
+        String email= JwtUtil.getEmail(rToken, secretKey);
+        List<String> urlsList=s3Service.findImageUrlsByUserId(email, "frame");
         return ResponseEntity.ok().body(urlsList);
-         */
     }
 
     @ApiOperation(value = "특정 Frame 지우기", notes = "이미지명으로 받아야돼")
